@@ -7,7 +7,6 @@ from datetime import datetime, date
 api_url = 'http://b3f9eddc972c.mylabserver.com:8081/'
 pd.options.display.float_format = '{:,.2f}'.format
 
-
 def get_portfolio_list():
     try:
         response = requests.get(api_url + 'portfoliomanagement/portfolios')
@@ -29,6 +28,8 @@ def get_portfolio_data(portfolio_name):
     portfolio_stocks = pd.DataFrame(portfolio_detail['portfolio_stocks']).rename(columns={'Climate': 'Impact'})
     portfolio_summary = pd.DataFrame(portfolio_detail['portfolio_summary'])
     benchmark_summary = pd.DataFrame(portfolio_detail['benchmark_summary'])
+
+    portfolio_stocks.set_index('Ticker', inplace=True)
 
     plot_inv_value_data = pd.DataFrame(portfolio_detail['plot_data']).rename(columns={'CreatedDate': 'Date'})
     plot_esg_score_data = pd.DataFrame(portfolio_detail['plot_data_esg']).rename(columns={'CreatedDate': 'Date'})
@@ -80,15 +81,16 @@ def main():
             col_stocks, col_summary = st.columns(2, gap="small")
             with col_stocks:
                 st.write(f"### {len(portfolio_stocks)} stocks in {portfolio}")
-                cols = ['Ticker', 'Current_Value', 'Invested_Value', 'Impact']
-                st.write(portfolio_stocks[cols])
+                cols = ['Current_Value', 'Invested_Value', 'Impact']
+                df = portfolio_stocks[cols]
+                st.dataframe(df.style.format(subset=['Current_Value', 'Invested_Value'], formatter='{:,.0f}'))
 
             with col_summary:
                 st.write('### Portfolio Summary')
-                st.write(portfolio_summary)
+                st.dataframe(portfolio_summary.style.format(formatter='{:,.0f}'))
 
                 st.write('### Benchmark Summary')
-                st.write(benchmark_summary)
+                st.dataframe(benchmark_summary.style.format(formatter='{:,.0f}'))
 
         col1, col2 = st.columns(2, gap="small")
         with col1:
