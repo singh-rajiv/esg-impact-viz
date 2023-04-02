@@ -24,12 +24,20 @@ def str_to_date(text):
     items =  [int(i) for i in text.split('/')]
     return date(items[2], items[0], items[1])
 
+@st.cache_data(show_spinner='fetching data from api...')
 def get_portfolio_data(portfolio_name):
     response = requests.get(api_url + 'portfoliomanagement/portfolios/{0}'.format(portfolio_name))
     portfolio_detail = json.loads(response.text)
     portfolio_stocks = pd.DataFrame(portfolio_detail['portfolio_stocks']).rename(columns={'Climate': 'Impact'})
     portfolio_summary = pd.DataFrame(portfolio_detail['portfolio_summary'])
     benchmark_summary = pd.DataFrame(portfolio_detail['benchmark_summary'])
+
+    portfolio_summary['Change'] = portfolio_summary['Current_Value'] - portfolio_summary['Invested_Value']
+    portfolio_summary['Pct. Change'] = (portfolio_summary['Change'] / portfolio_summary['Invested_Value']) * 100
+
+    benchmark_summary['Change'] = benchmark_summary['Current_Value'] - benchmark_summary['Invested_Value']
+    benchmark_summary['Pct. Change'] = (benchmark_summary['Change'] / benchmark_summary['Invested_Value']) * 100
+
 
     portfolio_stocks.set_index('Ticker', inplace=True)
 
@@ -54,7 +62,7 @@ def get_portfolio_data(portfolio_name):
         'plot_benchmark_returns_data': plot_benchmark_returns_data
     }
 
-
+@st.cache_data(show_spinner='fetching data from api...')
 def get_portfolio_projection(portfolio_name):
     response = requests.get(api_url + 'projection/portfolios/{0}'.format(portfolio_name))
     projection_detail = json.loads(response.text)
@@ -102,8 +110,6 @@ def main():
         stocks_projection = projection_data['stocks_projection']
         plot_projection = projection_data['plot_projection']
 
-
-
         tab_current, tab_forecast = st.tabs(['🗃 Current', '📈 Projection'])
         with tab_current:
             expander = st.expander(f"View {portfolio} Data:", True)
@@ -124,30 +130,30 @@ def main():
 
             col_inv_val, col_esg_score = st.columns(2, gap="small")
             with col_inv_val:
-                st.header('Invested Value')
+                st.write('### Invested Value')
                 st.line_chart(data=plot_inv_value_data, x='Date', y='Invested_Value')
             
             with col_esg_score:
-                st.header('Avg ESG Score')
+                st.write('### Avg ESG Score')
                 st.line_chart(plot_esg_score_data, x='Date', y='ESGScore')
 
             col_pf_return, col_bn_return = st.columns(2, gap="small")
             with col_pf_return:
-                st.header('Portfolio Returns')
+                st.write('### Portfolio Returns')
                 st.line_chart(data=plot_portfolio_returns_data, x='Date', y='ROIC')
 
             with col_bn_return:
-                st.header('Benchmark Returns')
+                st.write('### Benchmark Returns')
                 st.line_chart(data=plot_benchmark_returns_data, x='Date', y='Invested_Value')
 
         with tab_forecast:
             col_stocks, col_plot = st.columns(2, gap="small")
             with col_stocks:
-                st.header('Projection for 1 deg increase in temp')
+                st.write('### Projection for 1 deg increase in temp')
                 columns = ['Company', 'Country', 'Invested_Value', 'Forecasted Value']
                 st.dataframe((stocks_projection[columns]).style.format(subset=['Invested_Value', 'Forecasted Value'], formatter='{:,.0f}'))
             with col_plot:
-                st.header('Projection Plot')
+                st.write('### Projection Plot')
                 data = plot_projection.reset_index().melt('Date')
                 chart = alt.Chart(data).mark_line().encode(
                     x = alt.X('Date:T'),
